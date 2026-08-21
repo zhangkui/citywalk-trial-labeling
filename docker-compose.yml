@@ -1,0 +1,77 @@
+services:
+  mysql:
+    image: mysql:8.4
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "13306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: citywalk
+      MYSQL_USER: citywalk
+      MYSQL_PASSWORD: citywalk2024
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.4.10-bookworm
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    ports:
+      - "18081:8080"
+    environment:
+      APP_LISTEN_ADDR: :8080
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: citywalk
+      MYSQL_USER: citywalk
+      MYSQL_PASSWORD: citywalk2024
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      JWT_SECRET: your-secret-key-change-in-production
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
+      DATA_DIR: /data
+      CORS_ALLOW_ORIGIN: "*"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - api_data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.frontend
+    depends_on:
+      - api
+    ports:
+      - "18080:80"
+
+
+volumes:
+  mysql_data:
+  redis_data:
+  api_data:

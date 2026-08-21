@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS stories (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  cover_image VARCHAR(255),
+  landmark_ids JSON COMMENT '关联地标ID列表',
+  route_id BIGINT COMMENT '关联路线ID',
+  created_by BIGINT NOT NULL,
+  status TINYINT DEFAULT 0 COMMENT '0:草稿 1:待审 2:已发布',
+  like_count INT DEFAULT 0,
+  view_count INT DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME,
+  INDEX idx_status (status),
+  INDEX idx_created_by (created_by),
+  INDEX idx_route (route_id),
+  INDEX idx_created_at (created_at),
+  CONSTRAINT fk_stories_route FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE SET NULL,
+  CONSTRAINT fk_stories_user FOREIGN KEY (created_by) REFERENCES users(id)
+);

@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  nickname VARCHAR(64),
+  avatar VARCHAR(255),
+  bio TEXT,
+  city VARCHAR(64),
+  status TINYINT DEFAULT 1 COMMENT '1:启用 0:停用',
+  last_login_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_status (status),
+  INDEX idx_city (city)
+);

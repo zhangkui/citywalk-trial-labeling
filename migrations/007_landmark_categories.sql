@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS landmark_categories (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) UNIQUE NOT NULL,
+  icon VARCHAR(64),
+  sort_order INT DEFAULT 0
+);
