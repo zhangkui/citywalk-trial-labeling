@@ -1,0 +1,6 @@
+DATE=2026-08-21T23:24:44.3554461+08:00
+BRANCH=test_model_fix4
+HEAD=c1a80d757cf3999cbd5321d6ae54fd7baaee154e
+GO_VERSION=go version go1.26.1 windows/amd64
+DOCKER_VERSION=Docker version 29.1.3, build f52814d
+VERIFY_COMMAND=go test ./scripts/verify -count=1 -run '^TestBug004_BusinessRegression$'

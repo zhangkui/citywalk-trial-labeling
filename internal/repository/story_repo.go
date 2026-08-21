@@ -96,24 +96,58 @@ func (s *Store) FindStory(ctx context.Context, id int64) (map[string]any, error)
 	return map[string]any{"id": sid, "title": title, "content": content, "coverImage": coverImage.String, "landmarkIds": landmarkIDs.String, "routeId": routeID.Int64, "createdBy": createdBy, "status": status, "likeCount": likeCount, "viewCount": viewCount, "createdAt": createdAt, "updatedAt": updatedAt, "media": nonNilSlice(media)}, nil
 }
 
-func (s *Store) UpdateStory(ctx context.Context, id int64, title, content, coverImage string, landmarkIDs []int64, routeID *int64, status int8) error {
-	data, _ := json.Marshal(landmarkIDs)
-	_, err := s.Exec(ctx, `UPDATE stories SET title = ?, content = ?, cover_image = ?, landmark_ids = ?, route_id = ?, status = ? WHERE id = ?`, title, content, nullString(coverImage), string(data), routeID, status, id)
-	return err
-}
-
-func (s *Store) ReplaceStoryMedia(ctx context.Context, storyID int64, media []map[string]any) error {
-	if _, err := s.Exec(ctx, `DELETE FROM story_media WHERE story_id = ?`, storyID); err != nil {
+// UpdateStoryWithMedia updates the story row and replaces its media in a single
+// transaction, so a failure while inserting any media item rolls back the body
+// edit and the deletion of the old media. The whole edit either commits or has
+// no effect. Each media item carries its own order so the detail view honors the
+// order requested by the client rather than the insertion sequence.
+func (s *Store) UpdateStoryWithMedia(ctx context.Context, id int64, title, content, coverImage string, landmarkIDs []int64, routeID *int64, status int8, media []map[string]any) error {
+	tx, err := s.Begin(ctx)
+	if err != nil {
 		return err
 	}
-	for idx, item := range media {
+	data, _ := json.Marshal(landmarkIDs)
+	if _, err := tx.ExecContext(ctx, `UPDATE stories SET title = ?, content = ?, cover_image = ?, landmark_ids = ?, route_id = ?, status = ? WHERE id = ?`, title, content, nullString(coverImage), string(data), routeID, status, id); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM story_media WHERE story_id = ?`, id); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	for _, item := range media {
 		url, _ := item["url"].(string)
 		typ, _ := item["type"].(int8)
-		if err := s.AddStoryMedia(ctx, storyID, typ, url, idx); err != nil {
+		order, _ := item["order"].(int)
+		if _, err := tx.ExecContext(ctx, `INSERT INTO story_media(story_id, type, url, `+"`order`"+`) VALUES (?, ?, ?, ?)`, id, mediaTypeOrDefault(typ), url, order); err != nil {
+			_ = tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
+}
+
+// ReplaceStoryMedia is retained for callers that only swap media. It persists the
+// order supplied with each item rather than re-numbering by position.
+func (s *Store) ReplaceStoryMedia(ctx context.Context, storyID int64, media []map[string]any) error {
+	tx, err := s.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM story_media WHERE story_id = ?`, storyID); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	for _, item := range media {
+		url, _ := item["url"].(string)
+		typ, _ := item["type"].(int8)
+		order, _ := item["order"].(int)
+		if _, err := tx.ExecContext(ctx, `INSERT INTO story_media(story_id, type, url, `+"`order`"+`) VALUES (?, ?, ?, ?)`, storyID, mediaTypeOrDefault(typ), url, order); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Store) SoftDeleteStory(ctx context.Context, id int64) error {
@@ -160,9 +194,13 @@ func (s *Store) LikeStory(ctx context.Context, userID, storyID int64, add bool) 
 }
 
 func (s *Store) AddStoryMedia(ctx context.Context, storyID int64, mediaType int8, url string, order int) error {
-	if mediaType == 0 {
-		mediaType = 1
-	}
-	_, err := s.Exec(ctx, `INSERT INTO story_media(story_id, type, url, `+"`order`"+`) VALUES (?, ?, ?, ?)`, storyID, mediaType, url, order)
+	_, err := s.Exec(ctx, `INSERT INTO story_media(story_id, type, url, `+"`order`"+`) VALUES (?, ?, ?, ?)`, storyID, mediaTypeOrDefault(mediaType), url, order)
 	return err
+}
+
+func mediaTypeOrDefault(t int8) int8 {
+	if t == 0 {
+		return 1
+	}
+	return t
 }

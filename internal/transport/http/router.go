@@ -851,7 +851,9 @@ func (r *router) handleStoriesUpdate(w http.ResponseWriter, req *http.Request) {
 func storyUpdateMedia(items []map[string]any) []map[string]any {
 	media := make([]map[string]any, 0, len(items))
 	for _, item := range items {
-		media = append(media, map[string]any{"type": item["type"], "url": item["url"]})
+		// Carry the client-supplied order so the detail view presents media in
+		// the order requested, rather than re-imposing an insertion sequence.
+		media = append(media, map[string]any{"type": item["type"], "url": item["url"], "order": item["order"]})
 	}
 	return media
 }
