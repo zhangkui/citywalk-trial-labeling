@@ -11,11 +11,7 @@ type RouteService struct{ c *Container }
 
 func (s *RouteService) List(ctx context.Context, city string, themeID int64, sortBy string, page, pageSize int, minRate float64) ([]map[string]any, int64, error) {
 	limit, offset := Page{Page: page, PageSize: pageSize}.limitOffset()
-	countMinRate := minRate
-	if strings.TrimSpace(city) != "" && themeID > 0 {
-		countMinRate = 0
-	}
-	return s.c.Deps.Store.ListRoutes(ctx, repository.RouteFilter{City: city, ThemeID: themeID, MinRate: minRate, CountMinRate: countMinRate, SortBy: sortBy, Limit: limit, Offset: offset})
+	return s.c.Deps.Store.ListRoutes(ctx, repository.RouteFilter{City: city, ThemeID: themeID, MinRate: minRate, SortBy: sortBy, Limit: limit, Offset: offset})
 }
 
 func (s *RouteService) Detail(ctx context.Context, id int64) (map[string]any, error) {

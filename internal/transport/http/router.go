@@ -587,10 +587,15 @@ func (r *router) handleAdminAssignRoles(w http.ResponseWriter, req *http.Request
 }
 
 func (r *router) handleRoutesList(w http.ResponseWriter, req *http.Request) {
-	city := strings.TrimSpace(req.URL.Query().Get("city"))
-	themeID := parseInt64(req.URL.Query().Get("themeId"), 0)
-	minRate := routeListMinRate(req, city, themeID)
-	data, total, err := r.deps.Services.Route.List(req.Context(), city, themeID, req.URL.Query().Get("sort"), parseInt(req.URL.Query().Get("page"), 1), parseInt(req.URL.Query().Get("pageSize"), 20), minRate)
+	q := req.URL.Query()
+	city := strings.TrimSpace(q.Get("city"))
+	themeID := parseInt64(q.Get("themeId"), 0)
+	minRate, ok := parseOptionalFloat(q.Get("minRate"))
+	if !ok {
+		Fail(w, http.StatusBadRequest, 1001, "参数错误")
+		return
+	}
+	data, total, err := r.deps.Services.Route.List(req.Context(), city, themeID, q.Get("sort"), parseInt(q.Get("page"), 1), parseInt(q.Get("pageSize"), 20), minRate)
 	if err != nil {
 		failFromErr(w, err)
 		return
@@ -736,12 +741,15 @@ func (r *router) handleRoutesUnfavorite(w http.ResponseWriter, req *http.Request
 	OK(w, map[string]any{"success": true})
 }
 
-func routeListMinRate(req *http.Request, city string, themeID int64) float64 {
-	minRate := parseFloat(req.URL.Query().Get("minRate"), 0)
-	if city != "" && themeID > 0 && minRate < 0 {
-		return 0
+func parseOptionalFloat(value string) (float64, bool) {
+	if value == "" {
+		return 0, true
 	}
-	return minRate
+	v, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 func routeUpdateWaypoints(items []map[string]any) []map[string]any {

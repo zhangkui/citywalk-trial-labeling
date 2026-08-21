@@ -9,13 +9,12 @@ import (
 )
 
 type RouteFilter struct {
-	City         string
-	ThemeID      int64
-	MinRate      float64
-	CountMinRate float64
-	SortBy       string
-	Limit        int
-	Offset       int
+	City    string
+	ThemeID int64
+	MinRate float64
+	SortBy  string
+	Limit   int
+	Offset  int
 }
 
 type RouteWithWaypoints struct {
@@ -63,19 +62,13 @@ func (s *Store) ListRoutes(ctx context.Context, filter RouteFilter) ([]map[strin
 		clauses = append(clauses, "r.theme_id = ?")
 		args = append(args, filter.ThemeID)
 	}
-	countClauses := append([]string(nil), clauses...)
-	countArgs := append([]any(nil), args...)
-	if filter.CountMinRate > 0 {
-		countClauses = append(countClauses, "r.rating >= ?")
-		countArgs = append(countArgs, filter.CountMinRate)
-	}
 	if filter.MinRate > 0 {
 		clauses = append(clauses, "r.rating >= ?")
 		args = append(args, filter.MinRate)
 	}
 	where := strings.Join(clauses, " AND ")
 	var total int64
-	if err := s.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(1) FROM routes r WHERE %s`, strings.Join(countClauses, " AND ")), countArgs...).Scan(&total); err != nil {
+	if err := s.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(1) FROM routes r WHERE %s`, where), args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	sortBy := "r.created_at DESC"
