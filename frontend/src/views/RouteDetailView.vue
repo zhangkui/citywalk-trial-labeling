@@ -5,7 +5,7 @@
         <div class="toolbar" style="justify-content: space-between;">
           <StatusBadge kind="route" :value="route.status" />
           <div class="toolbar">
-            <button class="btn secondary" @click="toggleFavorite">收藏</button>
+            <button class="btn secondary" @click="toggleFavorite">{{ isFavorite ? '取消收藏' : '收藏' }}</button>
             <button class="btn ghost" @click="rate">评分 5 分</button>
           </div>
         </div>
@@ -34,10 +34,13 @@ import SectionTitle from '@/components/SectionTitle.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SimpleMap from '@/components/SimpleMap.vue';
 import { useRouteStore } from '@/stores/routes';
+import { useFavoritesStore } from '@/stores/favorites';
 
 const routeStore = useRouteStore();
+const favorites = useFavoritesStore();
 const route = computed(() => routeStore.current);
 const currentRoute = useRoute();
+const isFavorite = computed(() => (route.value ? favorites.routeIds.includes(route.value.id) : false));
 
 onMounted(async () => {
   await routeStore.loadDetail(Number(currentRoute.params.id));
@@ -48,7 +51,13 @@ const path = computed(() => (route.value?.waypoints ?? []).map((item) => [item.l
 
 async function toggleFavorite() {
   if (!route.value) return;
-  await routeStore.toggleFavorite(route.value.id, true);
+  // Toggle the local favorite state and persist the matching server operation.
+  // The server is idempotent and self-healing, but we still reload the detail so
+  // the displayed favoriteCount reflects the authoritative backend count.
+  const next = !isFavorite.value;
+  favorites.toggle('routes', route.value.id);
+  await routeStore.toggleFavorite(route.value.id, next);
+  await routeStore.loadDetail(route.value.id);
 }
 
 async function rate() {

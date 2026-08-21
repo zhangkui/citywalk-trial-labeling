@@ -225,27 +225,23 @@ func (s *Store) FavoriteRoute(ctx context.Context, userID, routeID int64, add bo
 		return err
 	}
 	if add {
-		res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO favorites(user_id, target_type, target_id) VALUES (?, 'route', ?)`, userID, routeID)
-		if err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-		_ = res
-		if _, err := tx.ExecContext(ctx, `UPDATE routes SET favorite_count = favorite_count + 1 WHERE id = ?`, routeID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO favorites(user_id, target_type, target_id) VALUES (?, 'route', ?)`, userID, routeID); err != nil {
 			_ = tx.Rollback()
 			return err
 		}
 	} else {
-		res, err := tx.ExecContext(ctx, `DELETE FROM favorites WHERE user_id = ? AND target_type = 'route' AND target_id = ?`, userID, routeID)
-		if err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM favorites WHERE user_id = ? AND target_type = 'route' AND target_id = ?`, userID, routeID); err != nil {
 			_ = tx.Rollback()
 			return err
 		}
-		_ = res
-		if _, err := tx.ExecContext(ctx, `UPDATE routes SET favorite_count = GREATEST(favorite_count - 1, 0) WHERE id = ?`, routeID); err != nil {
-			_ = tx.Rollback()
-			return err
-		}
+	}
+	// Recompute favorite_count from the actual favorite rows so the operation is
+	// idempotent and self-healing: a repeated add/remove (or a click on an
+	// already-correct state) leaves the count unchanged, while a stale count is
+	// resynced on the next favorite touch.
+	if _, err := tx.ExecContext(ctx, `UPDATE routes SET favorite_count = (SELECT COUNT(*) FROM favorites WHERE target_type = 'route' AND target_id = ?) WHERE id = ?`, routeID, routeID); err != nil {
+		_ = tx.Rollback()
+		return err
 	}
 	return tx.Commit()
 }

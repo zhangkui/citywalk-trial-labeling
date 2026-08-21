@@ -1,0 +1,11 @@
+DATE=2026-08-21T22:18:16.0338613+08:00
+BRANCH=test_model_fix2
+HEAD=c1a80d757cf3999cbd5321d6ae54fd7baaee154e
+GO_VERSION=go version go1.26.1 windows/amd64
+DOCKER_VERSION=Docker version 29.1.3, build f52814d
+VERIFY_COMMAND=go test -race ./scripts/verify -count=10 -run '^TestBug002_BusinessRegression$'
+PRE_SESSION=9f70e165-c2a2-4dc8-930a-f2fb77baf554
+POST_SESSION=5888dfec-202c-41d8-8c15-d95f649ce738
+POST_PRE_SESSION=eb692df7-aa57-4983-8fbe-271cdf3e94e0
+TEST_SHA256=edcecb5b0cea2ef7eeafd7b3089e90fa1ffa4d259b44ee4edf8bf8124dd727cb
+HELPER_SHA256=cc9e22d5cf41ca0fa2b65ba389440cfe69a5dd341194b3959e28712b29ecf052

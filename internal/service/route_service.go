@@ -67,13 +67,11 @@ func (s *RouteService) UpdateStatus(ctx context.Context, id int64, status int8) 
 }
 
 func (s *RouteService) Favorite(ctx context.Context, userID, routeID int64, add bool) error {
-	active, err := s.c.Deps.Store.HasUserTarget(ctx, "favorites", userID, "route", routeID)
-	if err != nil {
-		return err
-	}
-	if active == add {
-		return nil
-	}
+	// Always run the underlying mutation. It is idempotent (INSERT IGNORE /
+	// DELETE) and recomputes favorite_count from the actual favorite rows, so a
+	// repeated click on an already-correct state leaves the data unchanged
+	// while a stale count gets resynced. This avoids an early return that would
+	// otherwise prevent a drifted favorite_count from self-healing.
 	return s.c.Deps.Store.FavoriteRoute(ctx, userID, routeID, add)
 }
 func (s *RouteService) Rate(ctx context.Context, routeID int64, score float64) error {
