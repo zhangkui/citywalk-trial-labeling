@@ -1,0 +1,6 @@
+﻿branch=test_model_fix1
+head=eea3ec731ccfdf40de8fcd70033a2f2f65fb5154
+go_version=go version go1.26.1 windows/amd64
+docker_mysql=127.0.0.1:13306 citywalk/citywalk2024
+docker_redis=127.0.0.1:16379 no-password
+recorded_at=2026-08-21T20:28:21.8877677+08:00

@@ -1,0 +1,6 @@
+﻿NAME             IMAGE                   COMMAND                  SERVICE    CREATED       STATUS                       PORTS
+xm3-api-1        xm3-api                 "/app/citywalk"          api        4 hours ago   Up 31 minutes                0.0.0.0:18081->8080/tcp, [::]:18081->8080/tcp
+xm3-frontend-1   xm3-frontend            "/docker-entrypoint.…"   frontend   4 hours ago   Up 31 minutes                0.0.0.0:18080->80/tcp, [::]:18080->80/tcp
+xm3-mysql-1      mysql:8.4               "docker-entrypoint.s…"   mysql      4 hours ago   Up About an hour (healthy)   0.0.0.0:13306->3306/tcp, [::]:13306->3306/tcp
+xm3-redis-1      redis:7.4.10-bookworm   "docker-entrypoint.s…"   redis      4 hours ago   Up About an hour (healthy)   0.0.0.0:16379->6379/tcp, [::]:16379->6379/tcp
+
