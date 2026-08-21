@@ -747,8 +747,10 @@ func routeListMinRate(req *http.Request, city string, themeID int64) float64 {
 func routeUpdateWaypoints(items []map[string]any) []map[string]any {
 	waypoints := make([]map[string]any, 0, len(items))
 	for _, item := range items {
+		// Carry "order" through so the caller's intended sequence is
+		// preserved instead of being overwritten by slice position.
 		waypoints = append(waypoints, map[string]any{
-			"name": item["name"], "lat": item["lat"], "lng": item["lng"], "stayDuration": item["stayDuration"],
+			"name": item["name"], "lat": item["lat"], "lng": item["lng"], "stayDuration": item["stayDuration"], "order": item["order"],
 		})
 	}
 	return waypoints

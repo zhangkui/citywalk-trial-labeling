@@ -40,7 +40,7 @@ func (s *Store) CreateRoute(ctx context.Context, title, description string, them
 		return 0, err
 	}
 	for idx, wp := range waypoints {
-		_, err := tx.ExecContext(ctx, `INSERT INTO waypoints(route_id, name, lat, lng, stay_duration, `+"`order`"+`) VALUES (?, ?, ?, ?, ?, ?)`, routeID, wp["name"], wp["lat"], wp["lng"], wp["stayDuration"], idx)
+		_, err := tx.ExecContext(ctx, `INSERT INTO waypoints(route_id, name, lat, lng, stay_duration, `+"`order`"+`) VALUES (?, ?, ?, ?, ?, ?)`, routeID, wp["name"], wp["lat"], wp["lng"], wp["stayDuration"], waypointOrder(wp, idx))
 		if err != nil {
 			_ = tx.Rollback()
 			return 0, err
@@ -138,19 +138,42 @@ func (s *Store) FindRoute(ctx context.Context, id int64) (map[string]any, error)
 }
 
 func (s *Store) UpdateRoute(ctx context.Context, id int64, title, description string, themeID *int64, city string, startLat, startLng, endLat, endLng *float64, totalDistance, duration *int, difficulty int8, coverImage string, status int8, waypoints []map[string]any) error {
-	if _, err := s.Exec(ctx, `UPDATE routes SET title = ?, description = ?, theme_id = ?, city = ?, start_lat = ?, start_lng = ?, end_lat = ?, end_lng = ?, total_distance = ?, duration = ?, difficulty = ?, cover_image = ?, status = ? WHERE id = ?`,
-		title, nullString(description), themeID, nullString(city), startLat, startLng, endLat, endLng, totalDistance, duration, difficulty, nullString(coverImage), status, id); err != nil {
+	tx, err := s.Begin(ctx)
+	if err != nil {
 		return err
 	}
-	if _, err := s.Exec(ctx, `DELETE FROM waypoints WHERE route_id = ?`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE routes SET title = ?, description = ?, theme_id = ?, city = ?, start_lat = ?, start_lng = ?, end_lat = ?, end_lng = ?, total_distance = ?, duration = ?, difficulty = ?, cover_image = ?, status = ? WHERE id = ?`,
+		title, nullString(description), themeID, nullString(city), startLat, startLng, endLat, endLng, totalDistance, duration, difficulty, nullString(coverImage), status, id); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM waypoints WHERE route_id = ?`, id); err != nil {
+		_ = tx.Rollback()
 		return err
 	}
 	for idx, wp := range waypoints {
-		if _, err := s.Exec(ctx, `INSERT INTO waypoints(route_id, name, lat, lng, stay_duration, `+"`order`"+`) VALUES (?, ?, ?, ?, ?, ?)`, id, wp["name"], wp["lat"], wp["lng"], wp["stayDuration"], idx); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO waypoints(route_id, name, lat, lng, stay_duration, `+"`order`"+`) VALUES (?, ?, ?, ?, ?, ?)`, id, wp["name"], wp["lat"], wp["lng"], wp["stayDuration"], waypointOrder(wp, idx)); err != nil {
+			_ = tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
+}
+
+// waypointOrder resolves the persisted order of a waypoint. It honors an
+// explicit "order" from the request when present (and numeric), so that a
+// caller's intended sequence is preserved rather than overwritten by the
+// slice position. It otherwise falls back to idx.
+func waypointOrder(wp map[string]any, idx int) int {
+	switch v := wp["order"].(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	}
+	return idx
 }
 
 func (s *Store) SoftDeleteRoute(ctx context.Context, id int64) error {
